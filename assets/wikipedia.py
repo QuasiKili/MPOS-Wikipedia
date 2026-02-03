@@ -1,11 +1,136 @@
 import lvgl as lv
-from mpos import Activity, DisplayMetrics
+from mpos import Activity, Intent, DisplayMetrics
 import requests
 import json
 import logging
 import re
 
 log = logging.getLogger("WikipediaApp")
+
+def normalize_text(text):
+    """
+    Normalize Unicode characters in Wikipedia text to ASCII equivalents.
+    
+    This function handles various special characters that may appear in Wikipedia
+    articles and replaces them with ASCII-compatible alternatives for better
+    display compatibility.
+    
+    Args:
+        text: The text string to normalize
+        
+    Returns:
+        The normalized text string
+    """
+    # Dictionary mapping Unicode characters to their ASCII equivalents
+    unicode_map = {
+        # Dashes and hyphens
+        '\u2013': ' - ',      # en-dash
+        '\u2014': ' - ',      # em-dash
+        '\u2011': '-',        # non-breaking hyphen
+        '\u2010': '-',        # hyphen
+        
+        # Quotes
+        '\u2018': "'",        # left single quotation mark
+        '\u2019': "'",        # right single quotation mark
+        '\u201c': '"',        # left double quotation mark
+        '\u201d': '"',        # right double quotation mark
+        '\u2032': "'",        # prime (often used as apostrophe)
+        '\u2033': '"',        # double prime
+        
+        # Spaces
+        '\u00a0': ' ',        # non-breaking space
+        '\u2009': ' ',        # thin space
+        '\u200a': ' ',        # hair space
+        
+        # Latin characters with diacritics (common in Wikipedia)
+        '\u00e0': 'a',        # à
+        '\u00e1': 'a',        # á
+        '\u00e2': 'a',        # â
+        '\u00e3': 'a',        # ã
+        '\u00e4': 'a',        # ä
+        '\u00e5': 'a',        # å
+        '\u00e6': 'ae',       # æ
+        '\u00e7': 'c',        # ç
+        '\u00e8': 'e',        # è
+        '\u00e9': 'e',        # é
+        '\u00ea': 'e',        # ê
+        '\u00eb': 'e',        # ë
+        '\u00ec': 'i',        # ì
+        '\u00ed': 'i',        # í
+        '\u00ee': 'i',        # î
+        '\u00ef': 'i',        # ï
+        '\u00f0': 'd',        # ð
+        '\u00f1': 'n',        # ñ
+        '\u00f2': 'o',        # ò
+        '\u00f3': 'o',        # ó
+        '\u00f4': 'o',        # ô
+        '\u00f5': 'o',        # õ
+        '\u00f6': 'o',        # ö
+        '\u00f8': 'o',        # ø
+        '\u00f9': 'u',        # ù
+        '\u00fa': 'u',        # ú
+        '\u00fb': 'u',        # û
+        '\u00fc': 'u',        # ü
+        '\u00fd': 'y',        # ý
+        '\u00fe': 'th',       # þ
+        '\u00ff': 'y',        # ÿ
+        '\u0101': 'a',        # ā (a with macron)
+        '\u0113': 'e',        # ē (e with macron)
+        '\u012b': 'i',        # ī (i with macron)
+        '\u014d': 'o',        # ō (o with macron)
+        '\u016b': 'u',        # ū (u with macron)
+        
+        # Uppercase variants
+        '\u00c0': 'A',        # À
+        '\u00c1': 'A',        # Á
+        '\u00c2': 'A',        # Â
+        '\u00c3': 'A',        # Ã
+        '\u00c4': 'A',        # Ä
+        '\u00c5': 'A',        # Å
+        '\u00c6': 'AE',       # Æ
+        '\u00c7': 'C',        # Ç
+        '\u00c8': 'E',        # È
+        '\u00c9': 'E',        # É
+        '\u00ca': 'E',        # Ê
+        '\u00cb': 'E',        # Ë
+        '\u00cc': 'I',        # Ì
+        '\u00cd': 'I',        # Í
+        '\u00ce': 'I',        # Î
+        '\u00cf': 'I',        # Ï
+        '\u00d0': 'D',        # Ð
+        '\u00d1': 'N',        # Ñ
+        '\u00d2': 'O',        # Ò
+        '\u00d3': 'O',        # Ó
+        '\u00d4': 'O',        # Ô
+        '\u00d5': 'O',        # Õ
+        '\u00d6': 'O',        # Ö
+        '\u00d8': 'O',        # Ø
+        '\u00d9': 'U',        # Ù
+        '\u00da': 'U',        # Ú
+        '\u00db': 'U',        # Û
+        '\u00dc': 'U',        # Ü
+        '\u00dd': 'Y',        # Ý
+        '\u00de': 'TH',       # Þ
+        '\u0100': 'A',        # Ā (A with macron)
+        '\u0112': 'E',        # Ē (E with macron)
+        '\u012a': 'I',        # Ī (I with macron)
+        '\u014c': 'O',        # Ō (O with macron)
+        '\u016a': 'U',        # Ū (U with macron)
+        
+        # Other common symbols
+        '\u2022': '*',        # bullet
+        '\u2026': '...',      # ellipsis
+        '\u00b0': ' deg',     # degree symbol
+        '\u00d7': 'x',        # multiplication sign
+        '\u00f7': '/',        # division sign
+        '\xa5': 'yen',          # yen symbol
+    }
+    
+    # Apply all replacements
+    for unicode_char, replacement in unicode_map.items():
+        text = text.replace(unicode_char, replacement)
+    
+    return text
 
 class WikipediaApp(Activity):
     def onCreate(self):
@@ -15,7 +140,7 @@ class WikipediaApp(Activity):
         log.info("WikipediaApp.onCreate started")
 
         self.screen = lv.obj()
-        self.screen.set_style_bg_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+        self.screen.set_style_bg_color(lv.color_hex(0x000000), lv.PART.MAIN)
 
         # Create a search bar
         self.search_bar = lv.textarea(self.screen)
@@ -33,11 +158,19 @@ class WikipediaApp(Activity):
         label.center()
         self.search_btn.add_event_cb(self.search_event_handler, lv.EVENT.CLICKED, None)
 
-        # Create a text area for the article
-        self.article_area = lv.textarea(self.screen)
-        self.article_area.set_pos(10, 60)
-        self.article_area.set_size(DisplayMetrics.width() - 20, DisplayMetrics.height() - 70)
-        self.article_area.set_text("Wikipedia article will be displayed here.")
+        # Create a container for the article content
+        self.article_container = lv.obj(self.screen)
+        self.article_container.set_pos(10, 60)
+        self.article_container.set_size(DisplayMetrics.width() - 20, DisplayMetrics.height() - 70)
+        self.article_container.set_style_border_width(0, 0)
+        self.article_container.set_style_bg_opa(lv.OPA.TRANSP, 0)
+
+        # Create a label for the article
+        self.article_label = lv.label(self.article_container)
+        self.article_label.set_long_mode(lv.label.LONG_MODE.WRAP)
+        self.article_label.set_recolor(True)
+        self.article_label.set_width(DisplayMetrics.width() - 40)
+        self.article_label.set_text("Wikipedia article will be displayed here.")
 
         self.setContentView(self.screen)
         log.info("WikipediaApp.onCreate finished")
@@ -45,27 +178,121 @@ class WikipediaApp(Activity):
     def search_event_handler(self, event):
         query = self.search_bar.get_text()
         if query:
-            self.article_area.set_text("Searching...")
+            self.article_label.set_text(f"Searching for '{query}'...")
+            lv.refr_now(None)
             log.info(f"Searching for: {query}")
             response = None
             try:
-                url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=true&titles={query}"
+                url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageprops&explaintext=true&titles={query}"
                 headers = { "User-Agent": "MPOS-WikipediaApp/1.0 (https://github.com/quasikili/MPOS-Wikipedia; kili@quasikili.com)" }
                 response = requests.get(url, headers=headers)
 
                 data = response.json()
+                log.info(data)
                 pages = data["query"]["pages"]
                 page_id = next(iter(pages))
-                extract = pages[page_id].get("extract", "NO EXTRACT FOUND")
 
-                # Clean the extract
-                extract = re.sub(r'==.*?==', '', extract)
+                if page_id == "-1":
+                    self.article_label.set_text(f"Article '{query}' not found.")
+                    return
+
+                page = pages[page_id]
+                
+                if "pageprops" in page and "disambiguation" in page["pageprops"]:
+                    extract = page.get("extract", "")
+                    
+                    # Normalize Unicode characters
+                    extract = normalize_text(extract)
+                    
+                    titles = [line.split(',')[0].strip() for line in extract.split('\n') if line.strip() and '==' not in line and not line.startswith("See also")]
+
+                    if not titles:
+                        self.article_label.set_text(f"'{query}' is a disambiguation page, but no articles could be extracted.")
+                        return
+
+                    self.create_disambiguation_popup(query, titles)
+                    return
+
+                extract = page.get("extract", "NO EXTRACT FOUND")
+
+                # Normalize Unicode characters
+                extract = normalize_text(extract)
+
+                # Style headings
+                extract = re.sub(r'=== (.*?) ===', r'#E1FF00 \1#', extract)
+                extract = re.sub(r'== (.*?) ==', r'#FF003C \1#', extract)
                 extract = extract.strip()
 
-                self.article_area.set_text(extract)
+                self.article_label.set_text(extract)
 
             except Exception as e:
                 log.error(f"An error occurred: {e} (type: {type(e)})")
                 if response is not None and hasattr(response, 'text'):
                     log.error(f"Response text was: {response.text}")
-                self.article_area.set_text(f"Error: {e}")
+                self.article_label.set_text(f"Error: {e}")
+
+    def create_disambiguation_popup(self, query, titles):
+        intent = Intent(activity_class=DisambiguationActivity)
+        intent.putExtra("query", query)
+        intent.putExtra("titles", titles)
+        self.startActivityForResult(intent, self.disambiguation_result_callback)
+
+    def disambiguation_result_callback(self, result):
+        if result.get("result_code") is True:
+            data = result.get("data")
+            if data:
+                selected_title = data.get("selected_title")
+                if selected_title:
+                    self.search_bar.set_text(selected_title)
+                    self.search_event_handler(None)
+
+
+class DisambiguationActivity(Activity):
+    """
+    Activity for selecting a disambiguation option from Wikipedia.
+    """
+    
+    def onCreate(self):
+        query = self.getIntent().extras.get("query")
+        titles = self.getIntent().extras.get("titles", [])
+        
+        screen = lv.obj()
+        screen.set_style_pad_all(15, lv.PART.MAIN)
+        
+        # Title label
+        title_label = lv.label(screen)
+        title_label.set_text(f"'{query}' is ambiguous")
+        title_label.set_width(lv.pct(100))
+        title_label.align(lv.ALIGN.TOP_MID, 0, 0)
+        
+        # Subtitle label
+        subtitle_label = lv.label(screen)
+        subtitle_label.set_text("Which article did you mean?")
+        subtitle_label.set_width(lv.pct(100))
+        subtitle_label.align(lv.ALIGN.TOP_MID, 0, 30)
+        
+        # Create a list for the disambiguation options
+        options_list = lv.list(screen)
+        options_list.set_size(lv.pct(100), DisplayMetrics.height() - 120)
+        options_list.align(lv.ALIGN.TOP_MID, 0, 60)
+        
+        # Add each title as a button in the list
+        for title in titles:
+            if title:  # Skip empty titles
+                button = options_list.add_button(None, title)
+                button.add_event_cb(lambda e, t=title: self.select_title(t), lv.EVENT.CLICKED, None)
+        
+        # Cancel button
+        cancel_button = lv.button(screen)
+        cancel_button.set_size(lv.SIZE_CONTENT, 40)
+        cancel_button.align(lv.ALIGN.BOTTOM_MID, 0, 0)
+        cancel_button.add_event_cb(lambda e: self.finish(), lv.EVENT.CLICKED, None)
+        cancel_label = lv.label(cancel_button)
+        cancel_label.set_text("Cancel")
+        cancel_label.center()
+        
+        self.setContentView(screen)
+    
+    def select_title(self, title):
+        self.setResult(True, {"selected_title": title})
+        self.finish()
