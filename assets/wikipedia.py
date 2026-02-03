@@ -237,7 +237,7 @@ class WikipediaApp(Activity):
         # Create a label for the article content
         self.article_label = lv.label(self.article_container)
         self.article_label.set_long_mode(lv.label.LONG_MODE.WRAP)
-        
+
         self.article_label.set_recolor(True)
         self.article_label.set_width(DisplayMetrics.width() - 40)
         self.article_label.set_text("")
@@ -246,7 +246,7 @@ class WikipediaApp(Activity):
         # Create a floating back button (similar to settings button in appstore.py)
         self.back_btn = lv.button(self.screen)
         margin = 15
-        btn_size = 50
+        btn_size = 35
         self.back_btn.set_size(btn_size, btn_size)
         self.back_btn.align(lv.ALIGN.TOP_RIGHT, -margin, 10)
         self.back_btn.add_event_cb(self.back_button_handler, lv.EVENT.CLICKED, None)
