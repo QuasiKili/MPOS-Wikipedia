@@ -198,7 +198,7 @@ class WikipediaApp(Activity):
         # Create a search bar
         self.search_bar = lv.textarea(self.screen)
         self.search_bar.set_pos(10, 10)
-        self.search_bar.set_size(DisplayMetrics.width() - 80, 40)
+        self.search_bar.set_size(DisplayMetrics.width() - 80, 35)
         self.search_bar.set_placeholder_text("Search Wikipedia...")
         self.search_bar.set_one_line(True)
 
@@ -210,7 +210,7 @@ class WikipediaApp(Activity):
         # Create a search button
         self.search_btn = lv.button(self.screen)
         self.search_btn.set_pos(DisplayMetrics.width() - 60, 10)
-        self.search_btn.set_size(50, 40)
+        self.search_btn.set_size(50, 35)
         label = lv.label(self.search_btn)
         label.set_text("Go")
         label.center()
@@ -227,7 +227,7 @@ class WikipediaApp(Activity):
 
         # Create a label for the article title (initially hidden)
         self.title_label = lv.label(self.article_container)
-        self.title_label.set_long_mode(lv.label.LONG_MODE.WRAP)
+        self.title_label.set_long_mode(lv.label.LONG_MODE.SCROLL_CIRCULAR)
         self.title_label.set_width(DisplayMetrics.width() - 40)
         self.title_label.set_style_text_font(lv.font_montserrat_24, lv.PART.MAIN)
         primary_color = lv.theme_get_color_primary(None)
@@ -237,6 +237,7 @@ class WikipediaApp(Activity):
         # Create a label for the article content
         self.article_label = lv.label(self.article_container)
         self.article_label.set_long_mode(lv.label.LONG_MODE.WRAP)
+        
         self.article_label.set_recolor(True)
         self.article_label.set_width(DisplayMetrics.width() - 40)
         self.article_label.set_text("")
