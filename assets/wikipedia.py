@@ -1,5 +1,5 @@
 import lvgl as lv
-from mpos import Activity, Intent, DisplayMetrics
+from mpos import Activity, Intent, DisplayMetrics, MposKeyboard
 import requests
 import json
 import logging
@@ -202,6 +202,11 @@ class WikipediaApp(Activity):
         self.search_bar.set_placeholder_text("Search Wikipedia...")
         self.search_bar.set_one_line(True)
 
+        # Create keyboard for search bar
+        self.keyboard = MposKeyboard(self.screen)
+        self.keyboard.set_textarea(self.search_bar)
+        self.keyboard.remove_flag(lv.obj.FLAG.HIDDEN)  # Show keyboard on search screen
+
         # Create a search button
         self.search_btn = lv.button(self.screen)
         self.search_btn.set_pos(DisplayMetrics.width() - 60, 10)
@@ -212,11 +217,13 @@ class WikipediaApp(Activity):
         self.search_btn.add_event_cb(self.search_event_handler, lv.EVENT.CLICKED, None)
 
         # Create a container for the article content
+        # Initially hidden on search screen
         self.article_container = lv.obj(self.screen)
-        self.article_container.set_pos(10, 60)
-        self.article_container.set_size(DisplayMetrics.width() - 20, DisplayMetrics.height() - 70)
+        self.article_container.set_pos(10, 10)
+        self.article_container.set_size(DisplayMetrics.width() - 20, DisplayMetrics.height() - 20)
         self.article_container.set_style_border_width(0, 0)
         self.article_container.set_style_bg_opa(lv.OPA.TRANSP, 0)
+        self.article_container.add_flag(lv.obj.FLAG.HIDDEN)  # Hidden initially
 
         # Create a label for the article title (initially hidden)
         self.title_label = lv.label(self.article_container)
@@ -226,18 +233,60 @@ class WikipediaApp(Activity):
         primary_color = lv.theme_get_color_primary(None)
         self.title_label.set_style_text_color(primary_color, lv.PART.MAIN)
         self.title_label.set_text("")
-        self.title_label.add_flag(lv.obj.FLAG.HIDDEN)
 
         # Create a label for the article content
         self.article_label = lv.label(self.article_container)
         self.article_label.set_long_mode(lv.label.LONG_MODE.WRAP)
         self.article_label.set_recolor(True)
         self.article_label.set_width(DisplayMetrics.width() - 40)
-        self.article_label.set_text("Wikipedia article will be displayed here.")
+        self.article_label.set_text("")
         self.article_label.align_to(self.title_label, lv.ALIGN.OUT_BOTTOM_LEFT, 0, 10)
+
+        # Create a floating back button (similar to settings button in appstore.py)
+        self.back_btn = lv.button(self.screen)
+        margin = 15
+        btn_size = 50
+        self.back_btn.set_size(btn_size, btn_size)
+        self.back_btn.align(lv.ALIGN.TOP_RIGHT, -margin, 10)
+        self.back_btn.add_event_cb(self.back_button_handler, lv.EVENT.CLICKED, None)
+        self.back_btn.add_flag(lv.obj.FLAG.HIDDEN)  # Hidden initially
+        back_label = lv.label(self.back_btn)
+        back_label.set_text(lv.SYMBOL.KEYBOARD)
+        back_label.set_style_text_font(lv.font_montserrat_18, lv.PART.MAIN)
+        back_label.center()
 
         self.setContentView(self.screen)
         log.info("WikipediaApp.onCreate finished")
+
+    def show_search_screen(self):
+        """Switch to search screen view"""
+        # Show search elements
+        self.search_bar.remove_flag(lv.obj.FLAG.HIDDEN)
+        self.search_btn.remove_flag(lv.obj.FLAG.HIDDEN)
+        self.keyboard.remove_flag(lv.obj.FLAG.HIDDEN)
+        
+        # Hide reading elements
+        self.article_container.add_flag(lv.obj.FLAG.HIDDEN)
+        self.back_btn.add_flag(lv.obj.FLAG.HIDDEN)
+        
+        log.info("Switched to search screen")
+
+    def show_reading_screen(self):
+        """Switch to reading screen view"""
+        # Hide search elements
+        self.search_bar.add_flag(lv.obj.FLAG.HIDDEN)
+        self.search_btn.add_flag(lv.obj.FLAG.HIDDEN)
+        self.keyboard.add_flag(lv.obj.FLAG.HIDDEN)
+        
+        # Show reading elements
+        self.article_container.remove_flag(lv.obj.FLAG.HIDDEN)
+        self.back_btn.remove_flag(lv.obj.FLAG.HIDDEN)
+        
+        log.info("Switched to reading screen")
+
+    def back_button_handler(self, event):
+        """Handle back button click to return to search screen"""
+        self.show_search_screen()
 
     def search_event_handler(self, event):
         query = self.search_bar.get_text()
@@ -360,10 +409,12 @@ class WikipediaApp(Activity):
 
             # Display article title
             self.title_label.set_text(article_title)
-            self.title_label.remove_flag(lv.obj.FLAG.HIDDEN)
             
             self.article_label.set_text(extract)
             print(f"THIS CASE {page}")
+            
+            # Switch to reading screen after successfully loading article
+            self.show_reading_screen()
 
         except Exception as e:
             log.error(f"An error occurred: {e} (type: {type(e)})")
