@@ -230,85 +230,81 @@ class WikipediaApp(Activity):
 
     def search_event_handler(self, event):
         query = self.search_bar.get_text()
-        if query:
-            self.article_label.set_text(f"Searching for '{query}'...")
-            lv.refr_now(None)
-            log.info(f"Searching for: {query}")
-            response = None
-            try:
-                url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageprops&explaintext=true&titles={url_encode(query)}"
-                headers = { "User-Agent": "MPOS-WikipediaApp/1.0 (https://github.com/quasikili/MPOS-Wikipedia; kili@quasikili.com)" }
-                response = requests.get(url, headers=headers)
+        if not query:
+            return
 
-                data = response.json()
-                log.info(data)
-                pages = data["query"]["pages"]
-                page_id = next(iter(pages))
+        self.article_label.set_text(f"Searching for '{query}'...")
+        lv.refr_now(None)
+        log.info(f"Searching for: {query}")
 
-                if page_id == "-1":
-                    self.article_label.set_text(f"Article '{query}' not found.")
-                    return
+        response = None
+        try:
+            url = (
+                "https://en.wikipedia.org/w/api.php"
+                "?action=query"
+                "&format=json"
+                "&prop=extracts|pageprops|links"
+                "&explaintext=true"
+                "&pllimit=60"
+                f"&titles={url_encode(query)}"
+            )
 
-                page = pages[page_id]
-                
-                if "pageprops" in page and "disambiguation" in page["pageprops"]:
-                    extract = page.get("extract", "")
-                    
-                    # Normalize Unicode characters
-                    extract = normalize_text(extract)
-                    
-                    # Filter out introductory lines and extract actual article titles
-                    # this is kinda DIY method to get the parts that should be the new search term, doesn't work great, ideally we just read what the page reference link is.
-                    titles = []
-                    for line in extract.split('\n'):
-                        line = line.strip()
-                        # Skip empty lines, section headers, and "See also" sections
-                        if not line or '==' in line or line.startswith("See also"):
-                            continue
-                        # Skip introductory lines that end with "may refer to:" or contain "refer to:"
-                        if line.endswith("may refer to:") or "refer to:" in line:
-                            continue
-                        # Skip lines that are just the search term with variations (e.g., "Test(s)")
-                        # These typically don't have commas or dashes
-                        if ',' not in line and ' - ' not in line and ' – ' not in line:
-                            continue
-                        Extract the title (part before comma or dash)
-                        if ',' in line:
-                            title = line.split(',')[0].strip()
-                        elif ' - ' in line:
-                            title = line.split(' - ')[0].strip()
-                        elif ' – ' in line:  # en-dash
-                            title = line.split(' – ')[0].strip()
-                        else:
-                            continue
-                        
+            headers = {
+                "User-Agent": "MPOS-WikipediaApp/1.0 (https://github.com/quasikili/MPOS-Wikipedia; kili@quasikili.com)"
+            }
+
+            response = requests.get(url, headers=headers)
+            data = response.json()
+
+            pages = data["query"]["pages"]
+            page_id = next(iter(pages))
+
+            if page_id == "-1":
+                self.article_label.set_text(f"Article '{query}' not found.")
+                return
+
+            page = pages[page_id]
+
+            # ---------- DISAMBIGUATION HANDLING ----------
+            if "pageprops" in page and "disambiguation" in page["pageprops"]:
+                links = page.get("links", [])
+                titles = []
+
+                for link in links:
+                    # ns == 0 → real articles only
+                    if link.get("ns") == 0:
+                        title = link.get("title")
                         if title:
                             titles.append(title)
 
-                    if not titles:
-                        self.article_label.set_text(f"'{query}' is a disambiguation page, but no articles could be extracted.")
-                        return
-
-                    self.create_disambiguation_popup(query, titles)
+                if not titles:
+                    self.article_label.set_text(
+                        f"'{query}' is a disambiguation page, but no articles were found."
+                    )
                     return
 
-                extract = page.get("extract", "NO EXTRACT FOUND")
+                log.info(f"Disambiguation titles: {titles}")
+                self.create_disambiguation_popup(query, titles)
+                return
+            # -------------------------------------------
 
-                # Normalize Unicode characters
-                extract = normalize_text(extract)
+            extract = page.get("extract", "NO EXTRACT FOUND")
+            extract = normalize_text(extract)
 
-                # Style headings
-                extract = re.sub(r'=== (.*?) ===', r'#E1FF00 \1#', extract)
-                extract = re.sub(r'== (.*?) ==', r'#FF003C \1#', extract)
-                extract = extract.strip()
+            # Style headings
+            extract = re.sub(r'=== (.*?) ===', r'#E1FF00 \1#', extract)
+            extract = re.sub(r'== (.*?) ==', r'#FF003C \1#', extract)
+            extract = extract.strip()
 
-                self.article_label.set_text(extract)
+            self.article_label.set_text(extract)
+            print(f"THIS CASE {page}")
 
-            except Exception as e:
-                log.error(f"An error occurred: {e} (type: {type(e)})")
-                if response is not None and hasattr(response, 'text'):
-                    log.error(f"Response text was: {response.text}")
-                self.article_label.set_text(f"Error: {e}")
+        except Exception as e:
+            log.error(f"An error occurred: {e} (type: {type(e)})")
+            if response is not None and hasattr(response, "text"):
+                log.error(f"Response text was: {response.text}")
+            self.article_label.set_text(f"Error: {e}")
+
 
     def create_disambiguation_popup(self, query, titles):
         intent = Intent(activity_class=DisambiguationActivity)
