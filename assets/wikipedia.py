@@ -193,7 +193,7 @@ class WikipediaApp(Activity):
         log.info("WikipediaApp.onCreate started")
 
         self.screen = lv.obj()
-        self.screen.set_style_bg_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        # Background color removed to allow theme adaptation
 
         # Create a search bar
         self.search_bar = lv.textarea(self.screen)
@@ -218,12 +218,23 @@ class WikipediaApp(Activity):
         self.article_container.set_style_border_width(0, 0)
         self.article_container.set_style_bg_opa(lv.OPA.TRANSP, 0)
 
-        # Create a label for the article
+        # Create a label for the article title (initially hidden)
+        self.title_label = lv.label(self.article_container)
+        self.title_label.set_long_mode(lv.label.LONG_MODE.WRAP)
+        self.title_label.set_width(DisplayMetrics.width() - 40)
+        self.title_label.set_style_text_font(lv.font_montserrat_24, lv.PART.MAIN)
+        primary_color = lv.theme_get_color_primary(None)
+        self.title_label.set_style_text_color(primary_color, lv.PART.MAIN)
+        self.title_label.set_text("")
+        self.title_label.add_flag(lv.obj.FLAG.HIDDEN)
+
+        # Create a label for the article content
         self.article_label = lv.label(self.article_container)
         self.article_label.set_long_mode(lv.label.LONG_MODE.WRAP)
         self.article_label.set_recolor(True)
         self.article_label.set_width(DisplayMetrics.width() - 40)
         self.article_label.set_text("Wikipedia article will be displayed here.")
+        self.article_label.align_to(self.title_label, lv.ALIGN.OUT_BOTTOM_LEFT, 0, 10)
 
         self.setContentView(self.screen)
         log.info("WikipediaApp.onCreate finished")
@@ -265,6 +276,9 @@ class WikipediaApp(Activity):
                 return
 
             page = pages[page_id]
+            
+            # Get article title
+            article_title = page.get("title", query)
 
             # ---------- DISAMBIGUATION HANDLING ----------
             if "pageprops" in page and "disambiguation" in page["pageprops"]:
@@ -292,11 +306,24 @@ class WikipediaApp(Activity):
             extract = page.get("extract", "NO EXTRACT FOUND")
             extract = normalize_text(extract)
 
-            # Style headings
-            extract = re.sub(r'=== (.*?) ===', r'#E1FF00 \1#', extract)
-            extract = re.sub(r'== (.*?) ==', r'#FF003C \1#', extract)
+            # Get primary theme color for headings
+            primary_color = lv.theme_get_color_primary(None)
+            # Convert LVGL color to hex string for recolor syntax
+            color_hex = f"{primary_color.red:02x}{primary_color.green:02x}{primary_color.blue:02x}"
+            
+            # Style headings with theme color and visual hierarchy
+            # Level 3 headings (smaller) - keep === markers visible in theme color
+            # extract = re.sub(r'=== (.*?) ===', rf'#{color_hex} === \1 ===#', extract)
+            # Level 2 headings (larger) - keep == markers visible in theme color
+            # extract = re.sub(r'== (.*?) ==', rf'#{color_hex} == \1 ==#', extract)
+            # extract = re.sub(r'== (.*?) ==', rf'#\n\n##{color_hex} \1##\n', extract)
             extract = extract.strip()
+            print(f"this is the edited extract: {extract}")
 
+            # Display article title
+            self.title_label.set_text(article_title)
+            self.title_label.remove_flag(lv.obj.FLAG.HIDDEN)
+            
             self.article_label.set_text(extract)
             print(f"THIS CASE {page}")
 
