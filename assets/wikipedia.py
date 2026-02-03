@@ -312,7 +312,7 @@ class WikipediaApp(Activity):
             )
 
             headers = {
-                "User-Agent": "MPOS-WikipediaApp/1.0 (https://github.com/quasikili/MPOS-Wikipedia; kili@quasikili.com)"
+                "User-Agent": "MPOS-WikipediaApp/1.0"
             }
 
             response = requests.get(url, headers=headers)
