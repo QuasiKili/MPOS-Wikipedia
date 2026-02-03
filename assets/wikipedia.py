@@ -243,6 +243,7 @@ class WikipediaApp(Activity):
                 "https://en.wikipedia.org/w/api.php"
                 "?action=query"
                 "&format=json"
+                "&redirects=1"
                 "&prop=extracts|pageprops|links"
                 "&explaintext=true"
                 "&pllimit=60"
