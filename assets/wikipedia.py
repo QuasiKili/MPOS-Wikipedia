@@ -257,7 +257,33 @@ class WikipediaApp(Activity):
                     # Normalize Unicode characters
                     extract = normalize_text(extract)
                     
-                    titles = [line.split(',')[0].strip() for line in extract.split('\n') if line.strip() and '==' not in line and not line.startswith("See also")]
+                    # Filter out introductory lines and extract actual article titles
+                    # this is kinda DIY method to get the parts that should be the new search term, doesn't work great, ideally we just read what the page reference link is.
+                    titles = []
+                    for line in extract.split('\n'):
+                        line = line.strip()
+                        # Skip empty lines, section headers, and "See also" sections
+                        if not line or '==' in line or line.startswith("See also"):
+                            continue
+                        # Skip introductory lines that end with "may refer to:" or contain "refer to:"
+                        if line.endswith("may refer to:") or "refer to:" in line:
+                            continue
+                        # Skip lines that are just the search term with variations (e.g., "Test(s)")
+                        # These typically don't have commas or dashes
+                        if ',' not in line and ' - ' not in line and ' – ' not in line:
+                            continue
+                        Extract the title (part before comma or dash)
+                        if ',' in line:
+                            title = line.split(',')[0].strip()
+                        elif ' - ' in line:
+                            title = line.split(' - ')[0].strip()
+                        elif ' – ' in line:  # en-dash
+                            title = line.split(' – ')[0].strip()
+                        else:
+                            continue
+                        
+                        if title:
+                            titles.append(title)
 
                     if not titles:
                         self.article_label.set_text(f"'{query}' is a disambiguation page, but no articles could be extracted.")
