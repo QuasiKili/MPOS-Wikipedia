@@ -312,12 +312,50 @@ class WikipediaApp(Activity):
             color_hex = f"{primary_color.red:02x}{primary_color.green:02x}{primary_color.blue:02x}"
             
             # Style headings with theme color and visual hierarchy
-            # Level 3 headings (smaller) - keep === markers visible in theme color
-            # extract = re.sub(r'=== (.*?) ===', rf'#{color_hex} === \1 ===#', extract)
-            # Level 2 headings (larger) - keep == markers visible in theme color
-            # extract = re.sub(r'== (.*?) ==', rf'#{color_hex} == \1 ==#', extract)
-            # extract = re.sub(r'== (.*?) ==', rf'#\n\n##{color_hex} \1##\n', extract)
-            extract = extract.strip()
+            # # Use negative lookahead/lookbehind to avoid matching nested patterns
+            # # Level 3 headings (smaller) - keep === markers visible in theme color
+            # extract = re.sub(r'(?<!=)=== (.*?) ===(?!=)', rf'#{color_hex} === \1 ===#', extract)
+            # # Level 2 headings (larger) - keep == markers visible in theme color
+            # extract = re.sub(r'(?<!=)== (.*?) ==(?!=)', rf'#{color_hex} == \1 ==#', extract)
+
+            # Level 3 headings first
+            # extract = re.sub(
+            #     r'=== ([^=]+) ===',
+            #     r'#%s === \1 ===#' % color_hex,
+            #     extract
+            # )
+
+            # # Level 2 headings second
+            # extract = re.sub(
+            #     r'== ([^=]+) ==',
+            #     r'#%s == \1 ==#' % color_hex,
+            #     extract
+            # )
+
+            # extract = extract.strip()
+
+            lines = extract.split('\n')
+            styled_lines = []
+
+            for line in lines:
+                line = line.rstrip()
+
+                # Level 3 heading
+                if line.startswith('=== ') and line.endswith(' ==='):
+                    title = line[4:-4]
+                    styled_lines.append(f'#{color_hex} === {title} ===#')
+                    continue
+
+                # Level 2 heading
+                if line.startswith('== ') and line.endswith(' =='):
+                    title = line[3:-3]
+                    styled_lines.append(f'#{color_hex} == {title} ==#')
+                    continue
+
+                styled_lines.append(line)
+
+            extract = '\n'.join(styled_lines).strip()
+
             print(f"this is the edited extract: {extract}")
 
             # Display article title
