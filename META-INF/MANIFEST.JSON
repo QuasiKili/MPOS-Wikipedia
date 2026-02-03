@@ -1,0 +1,23 @@
+{
+    "activities": [
+        {
+            "classname": "WikipediaApp",
+            "entrypoint": "assets/wikipedia.py",
+            "intent_filters": [
+                {
+                    "action": "main",
+                    "category": "launcher"
+                }
+            ]
+        }
+    ],
+    "category": "reference",
+    "fullname": "com.quasikili.wikipedia",
+    "name": "Wikipedia",
+    "publisher": "QuasiKili",
+    "version": "0.0.1",
+    "short_description": "An app to search and read Wikipedia articles.",
+    "long_description": "An app to search and read Wikipedia articles.",
+    "icon_url": "https://apps.micropythonos.com/apps/com.quasikili.wikipedia/icons/com.quasikili.wikipedia_0.0.1_64x64.png",
+    "download_url": "https://apps.micropythonos.com/apps/com.quasikili.wikipedia/mpks/com.quasikili.wikipedia_0.0.1.mpk"
+}
