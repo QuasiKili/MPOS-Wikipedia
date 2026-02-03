@@ -132,6 +132,59 @@ def normalize_text(text):
     
     return text
 
+def url_encode(text):
+    """
+    URL encode a string for use in query parameters.
+    Handles spaces, parentheses, and other special characters.
+    
+    This is a MicroPython-compatible implementation since urllib is not available.
+    """
+    # Characters that need encoding and their encoded values
+    encoding_map = {
+        ' ': '%20',
+        '!': '%21',
+        '"': '%22',
+        '#': '%23',
+        '$': '%24',
+        '%': '%25',
+        '&': '%26',
+        "'": '%27',
+        '(': '%28',
+        ')': '%29',
+        '*': '%2A',
+        '+': '%2B',
+        ',': '%2C',
+        '/': '%2F',
+        ':': '%3A',
+        ';': '%3B',
+        '=': '%3D',
+        '?': '%3F',
+        '@': '%40',
+        '[': '%5B',
+        '\\': '%5C',
+        ']': '%5D',
+        '^': '%5E',
+        '`': '%60',
+        '{': '%7B',
+        '|': '%7C',
+        '}': '%7D',
+        '~': '%7E',
+        '<': '%3C',
+        '>': '%3E',
+    }
+    
+    result = text
+    # Encode % first to avoid double-encoding
+    if '%' in result:
+        result = result.replace('%', '%25')
+    
+    # Then encode all other characters
+    for char, encoded in encoding_map.items():
+        if char != '%':  # Skip % since we already handled it
+            result = result.replace(char, encoded)
+    
+    return result
+
 class WikipediaApp(Activity):
     def onCreate(self):
         logging.basicConfig(level=logging.INFO)
@@ -183,7 +236,7 @@ class WikipediaApp(Activity):
             log.info(f"Searching for: {query}")
             response = None
             try:
-                url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageprops&explaintext=true&titles={query}"
+                url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageprops&explaintext=true&titles={url_encode(query)}"
                 headers = { "User-Agent": "MPOS-WikipediaApp/1.0 (https://github.com/quasikili/MPOS-Wikipedia; kili@quasikili.com)" }
                 response = requests.get(url, headers=headers)
 
